@@ -2,12 +2,12 @@ import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod';
 
 import { recordTiming } from '../listeners/feedback-store.js';
+import { addDeadline, daysUntil } from './tools/deadline-store.js';
 import {
   createVolunteerAnnouncementTool,
   draftDonorThankYouTool,
   draftImpactReportTool,
   findGrantsTool,
-  remindDeadlineTool,
   summarizeMeetingTool,
 } from './tools/index.js';
 
@@ -90,7 +90,10 @@ draft reports, track deadlines, and communicate — all through Slack.
    - "draft_donor_thankyou" — want to thank donors after a gift, campaign, or drive
    - "create_volunteer_announcement" — want to recruit volunteers for an event or shift
    - "summarize_meeting" — pasted meeting notes to summarize or turn into action items
-   - "remind_deadline" — want a reminder for a grant deadline
+   - "track_deadline" — want Benvu to remember a deadline and automatically nudge them (or
+     the team) in this Slack channel before it is due. Use this for anything like "remind me",
+     "don't let me forget", or a due date to keep track of. Needs the due date as YYYY-MM-DD
+     (ask if it's unclear, or convert a plain date they gave).
    - "post_to_channel" — the user has confirmed they want something posted to a specific channel
 3. Present the tool's result simply, in the user's language, keeping its formatting, and offer a next step
 
@@ -191,8 +194,8 @@ const ALLOWED_TOOLS = [
   'find_grants',
   'mark_resolved',
   'post_to_channel',
-  'remind_deadline',
   'summarize_meeting',
+  'track_deadline',
 ];
 
 const SLACK_MCP_URL = 'https://mcp.slack.com/mcp';
@@ -312,6 +315,65 @@ export async function runBenvuAgent(text, sessionId = undefined, deps = undefine
     },
   );
 
+  const trackDeadlineTool = tool(
+    'track_deadline',
+    'Remember a grant, compliance, or report deadline and automatically nudge the user (or a named ' +
+      'owner) in this Slack channel before it is due. Use this when someone wants to be reminded about a ' +
+      'deadline later, not just shown a reminder message now. Confirm what you saved and when the nudge ' +
+      'will arrive.',
+    {
+      title: z.string().describe('What is due, e.g. "Ford Foundation final report" or "Q3 compliance filing".'),
+      due_date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use ISO format YYYY-MM-DD.')
+        .describe('The due date in YYYY-MM-DD format.'),
+      owner: z.string().optional().describe('Who is responsible (a Slack @name or user id), if named.'),
+      remind_days_before: z
+        .number()
+        .int()
+        .min(0)
+        .max(90)
+        .optional()
+        .describe('How many days before the due date to send the reminder (default 7).'),
+      notes: z.string().optional().describe('Any extra context to include in the reminder.'),
+    },
+    async ({ title, due_date, owner, remind_days_before = 7, notes }) => {
+      if (!deps?.channelId) {
+        return {
+          content: [{ type: 'text', text: "I can't set an automatic reminder here — there's no channel to post to." }],
+        };
+      }
+
+      const record = addDeadline({
+        title,
+        dueDate: due_date,
+        remindDaysBefore: remind_days_before,
+        channelId: deps.channelId,
+        createdBy: deps.userId,
+        owner,
+        notes,
+      });
+
+      const remaining = daysUntil(due_date);
+      const when =
+        remaining < 0
+          ? `Heads up — that date is already ${Math.abs(remaining)} day(s) past, so I'll nudge on the next check.`
+          : remaining <= remind_days_before
+            ? `That's within the reminder window, so I'll nudge here shortly.`
+            : `I'll nudge here about ${remaining - remind_days_before} day(s) from now (${remind_days_before} day(s) before it's due).`;
+
+      const ownerLine = owner ? ` Owner: ${owner}.` : '';
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Saved \`${record.id}\`: *${title}* — due *${due_date}*.${ownerLine} ${when}`,
+          },
+        ],
+      };
+    },
+  );
+
   const benvuToolsServer = createSdkMcpServer({
     name: 'benvu-tools',
     version: '1.0.0',
@@ -323,8 +385,8 @@ export async function runBenvuAgent(text, sessionId = undefined, deps = undefine
       findGrantsTool,
       markResolvedTool,
       postToChannelTool,
-      remindDeadlineTool,
       summarizeMeetingTool,
+      trackDeadlineTool,
     ],
   });
 

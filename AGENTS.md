@@ -82,7 +82,7 @@ The store uses a `Map` keyed by `${channelId}:${threadTs}` with TTL-based cleanu
 
 ### Dependency Injection
 
-`runBenvuAgent(text, sessionId, deps)` accepts an optional `deps` object with `{ client, userId, channelId, threadTs, messageTs, userToken }`. Tools that need Slack API access (emoji reactions, mark resolved) are created as closures inside `runBenvuAgent()` that capture the `deps` parameter. Static tools (grant finder, report drafter, deadline reminder) remain as module-level exports in `agent/tools/`.
+`runBenvuAgent(text, sessionId, deps)` accepts an optional `deps` object with `{ client, userId, channelId, threadTs, messageTs, userToken, orgType }`. Tools that need Slack context (emoji reactions, mark resolved, post to channel, track deadline) are created as closures inside `runBenvuAgent()` that capture the `deps` parameter. Stateless tools (grant finder, report drafter, etc.) remain as module-level exports in `agent/tools/`.
 
 ### Tool Definitions
 
@@ -90,7 +90,7 @@ The store uses a `Map` keyed by `${channelId}:${threadTs}` with TTL-based cleanu
 
 - `grant-finder.js` — `find_grants(query)` returns up to 10 grants with name, deadline, amount, and eligibility.
 - `report-drafter.js` — `draft_impact_report(impact)` expands a one-line impact description into a full report draft.
-- `deadline-reminder.js` — `remind_deadline(grant_name, deadline)` returns a formatted deadline reminder message.
+- `track_deadline` (closure in `agent/benvu.js`, backed by `agent/tools/deadline-store.js`) — records a deadline bound to the Slack channel/user. The background `agent/deadline-scheduler.js` loop (started from `app.js` / `app-oauth.js`) reads `getDueDeadlines()` and posts a Slack reminder once per deadline before it's due.
 
 Tools in `agent/tools/` are defined using `tool()` from the Claude Agent SDK:
 
