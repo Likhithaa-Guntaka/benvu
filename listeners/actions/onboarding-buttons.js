@@ -38,9 +38,13 @@ export async function handleOrgTypeSelected({ ack, body, client, context, logger
     const org = getOrgTypeById(orgTypeId);
     if (!org) return;
 
-    // Was this user already onboarded? Capture before we overwrite it — the
-    // tailored DM should only go out the first time (null -> a real value).
-    const isFirstOnboarding = sessionStore.getOrgType(userId) === null;
+    // The tailored DM should go out only on a user's first-ever onboarding, not
+    // on later org-type changes. `getOrgType` can't tell those apart, because the
+    // "Change organization type" flow clears the org type to null before the user
+    // re-picks — so a dedicated onboarded flag (which clearOrgType never resets)
+    // is the real signal.
+    const isFirstOnboarding = !sessionStore.hasOnboarded(userId);
+    logger.info(`[org-select] user=${userId} hasOnboarded=${!isFirstOnboarding} picking=${org.id}`);
 
     // Durable persistence (survives restarts) is handled by the disk-backed store.
     sessionStore.setOrgType(userId, org.id);
@@ -63,6 +67,8 @@ export async function handleOrgTypeSelected({ ack, body, client, context, logger
     // tab already shows the tailored cards, so re-posting this would just clutter
     // the DM.
     if (isFirstOnboarding) {
+      // Mark onboarded up front so a rapid second click can't double-send the DM.
+      sessionStore.markOnboarded(userId);
       const conversation = await client.conversations.open({ users: userId });
       const channelId = conversation.channel?.id;
       if (channelId) {

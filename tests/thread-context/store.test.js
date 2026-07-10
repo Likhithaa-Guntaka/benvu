@@ -101,4 +101,35 @@ describe('SessionStore', () => {
       assert.strictEqual(calls, 2);
     });
   });
+
+  describe('onboarding flag', () => {
+    it('defaults to not onboarded, and marks idempotently', () => {
+      assert.strictEqual(store.hasOnboarded('U1'), false);
+      store.markOnboarded('U1');
+      store.markOnboarded('U1');
+      assert.strictEqual(store.hasOnboarded('U1'), true);
+    });
+
+    it('survives clearOrgType — the whole point of a separate store', () => {
+      store.setOrgType('U1', 'food_bank');
+      store.markOnboarded('U1');
+      store.clearOrgType('U1');
+      // Org type is gone (picker will show), but they are still onboarded.
+      assert.strictEqual(store.getOrgType('U1'), null);
+      assert.strictEqual(store.hasOnboarded('U1'), true);
+    });
+
+    it('setOrgType alone does not mark onboarded (only the DM path does)', () => {
+      store.setOrgType('U1', 'education');
+      assert.strictEqual(store.hasOnboarded('U1'), false);
+    });
+
+    it('importing persisted org types marks those users onboarded (survives restart)', () => {
+      const fresh = new SessionStore();
+      fresh.importOrgTypes({ U1: 'education', U2: 'food_bank' });
+      assert.strictEqual(fresh.hasOnboarded('U1'), true);
+      assert.strictEqual(fresh.hasOnboarded('U2'), true);
+      assert.strictEqual(fresh.hasOnboarded('U3'), false);
+    });
+  });
 });

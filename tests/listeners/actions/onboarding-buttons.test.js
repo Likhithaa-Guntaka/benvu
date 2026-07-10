@@ -18,7 +18,7 @@ describe('onboarding action handlers', () => {
       views: { publish: mock.fn(async () => ({ ok: true })), open: mock.fn(async () => ({ ok: true })) },
     };
     fakeContext = { botUserId: 'U0BOT', userToken: undefined };
-    fakeLogger = { error: mock.fn() };
+    fakeLogger = { error: mock.fn(), info: mock.fn() };
   });
 
   describe('handleOrgTypeSelected', () => {
@@ -51,17 +51,42 @@ describe('onboarding action handlers', () => {
       assert.strictEqual(fakeClient.chat.postMessage.mock.callCount(), 0);
     });
 
-    it('does NOT re-post the tailored DM when changing an already-set org type', async () => {
-      // Simulate a user who already onboarded, then picks a different type.
-      sessionStore.setOrgType('UCHANGE', 'food_bank');
-      const body = { user: { id: 'UCHANGE' }, actions: [{ value: 'education' }] };
-      await handleOrgTypeSelected({ ack: fakeAck, body, client: fakeClient, context: fakeContext, logger: fakeLogger });
+    it('sends the DM once across repeated Change-org-type switches (regression)', async () => {
+      // Models the real UI path that broke live: switching org type goes through
+      // "Change organization type", which clears the org type to null before the
+      // user re-picks. Only the first-ever selection should DM.
+      const U = 'USWITCH';
+      const select = (value) =>
+        handleOrgTypeSelected({
+          ack: fakeAck,
+          body: { user: { id: U }, actions: [{ value }] },
+          client: fakeClient,
+          context: fakeContext,
+          logger: fakeLogger,
+        });
+      const change = () =>
+        handleChangeOrgType({
+          ack: fakeAck,
+          body: { user: { id: U } },
+          client: fakeClient,
+          context: fakeContext,
+          logger: fakeLogger,
+        });
 
-      // Stored the new type and refreshed the Home tab...
-      assert.strictEqual(sessionStore.getOrgType('UCHANGE'), 'education');
-      assert.strictEqual(fakeClient.views.publish.mock.callCount(), 1);
-      // ...but did NOT clutter the DM with another "Set up for X" message.
-      assert.strictEqual(fakeClient.chat.postMessage.mock.callCount(), 0);
+      await select('food_bank'); // first onboarding -> DM
+      await change(); // clears org type to null
+      await select('mental_health'); // a change, NOT first onboarding -> no DM
+      await change();
+      await select('education'); // still a change -> no DM
+
+      assert.strictEqual(sessionStore.getOrgType(U), 'education');
+      assert.ok(sessionStore.hasOnboarded(U), 'user stays onboarded through changes');
+      // Exactly one tailored DM across the whole sequence — the original intent.
+      assert.strictEqual(fakeClient.chat.postMessage.mock.callCount(), 1);
+      assert.strictEqual(
+        fakeClient.chat.postMessage.mock.calls[0].arguments[0].text,
+        'Set up for Food Bank / Basic Needs.',
+      );
     });
   });
 

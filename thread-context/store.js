@@ -24,6 +24,14 @@ export class SessionStore {
      * @private @type {Map<string, { orgType: string, timestamp: number }>}
      */
     this._orgTypes = new Map();
+    /**
+     * User IDs that have completed onboarding at least once. Kept SEPARATE from
+     * `_orgTypes` on purpose: `clearOrgType` (the "Change organization type" flow)
+     * wipes the org type to re-show the picker, but must NOT reset this — otherwise
+     * every org-type change looks like first-time onboarding and re-sends the DM.
+     * @private @type {Set<string>}
+     */
+    this._onboarded = new Set();
     /** @private @type {number} */
     this._ttlSeconds = ttlSeconds;
     /** @private @type {number} */
@@ -53,7 +61,30 @@ export class SessionStore {
     const now = Date.now();
     for (const [userId, orgType] of Object.entries(map || {})) {
       this._orgTypes.set(userId, { orgType, timestamp: now });
+      // A persisted org type means this user already onboarded — remember that
+      // so a restart doesn't re-send the DM on their next org-type change.
+      this._onboarded.add(userId);
     }
+  }
+
+  /**
+   * Whether this user has completed onboarding at least once. Survives
+   * `clearOrgType`, so re-selecting after "Change organization type" is not
+   * treated as first-time onboarding.
+   * @param {string} userId
+   * @returns {boolean}
+   */
+  hasOnboarded(userId) {
+    return this._onboarded.has(userId);
+  }
+
+  /**
+   * Mark a user as having completed onboarding (idempotent).
+   * @param {string} userId
+   * @returns {void}
+   */
+  markOnboarded(userId) {
+    this._onboarded.add(userId);
   }
 
   /**
