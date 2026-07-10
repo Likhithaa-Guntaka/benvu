@@ -7,7 +7,12 @@
   "features": {
     "agent_view": {
       "agent_description": "Benvu is a teammate for nonprofit staff who wear ten hats and never have enough hours. Tell it what you need — grants to chase, a report due, a donor to thank — and it finds the answer or writes the first draft in seconds, in whatever language you write in.",
-      "suggested_prompts": []
+      "suggested_prompts": [
+        { "title": "Find grants", "message": "Find grants that fit our mission and budget" },
+        { "title": "Draft a report", "message": "Draft an impact report from a few notes about what we did" },
+        { "title": "Thank a donor", "message": "Write a warm thank-you note for our donors" },
+        { "title": "Track a deadline", "message": "Remind me about a grant deadline before it is due" }
+      ]
     },
     "app_home": {
       "home_tab_enabled": true,
