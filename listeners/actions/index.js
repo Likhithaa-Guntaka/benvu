@@ -1,4 +1,6 @@
 import { CHANGE_ORG_ACTION } from '../views/app-home-builder.js';
+import { DEADLINE_DONE_ACTION, DEADLINE_SNOOZE_ACTION } from '../views/deadline-reminder-builder.js';
+import { handleDeadlineDone, handleDeadlineSnooze } from './deadline-buttons.js';
 import { handleFeedbackButton, handleFeedbackDownSubmit } from './feedback-buttons.js';
 import { handleIssueButton } from './issue-buttons.js';
 import {
@@ -22,4 +24,6 @@ export function register(app) {
   app.action(CHANGE_ORG_ACTION, handleChangeOrgType);
   app.action('more_actions_select', handleMoreActionsSelect);
   app.action(/^prompt_run_/, handlePromptButton);
+  app.action(DEADLINE_DONE_ACTION, handleDeadlineDone);
+  app.action(DEADLINE_SNOOZE_ACTION, handleDeadlineSnooze);
 }

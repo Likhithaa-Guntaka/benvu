@@ -1,42 +1,8 @@
-import { daysUntil, getDueDeadlines, markNotified } from './tools/deadline-store.js';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/**
- * Reformat an ISO date (YYYY-MM-DD) as "Aug 9, 2026".
- * @param {string} iso
- * @returns {string}
- */
-function prettyDate(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
-  if (!m) return iso;
-  const month = MONTHS[Number(m[2]) - 1] ?? m[2];
-  return `${month} ${Number(m[3])}, ${m[1]}`;
-}
-
-/**
- * Compose the reminder message for a due deadline. Matches Benvu's warm,
- * plain-language tone.
- * @param {import('./tools/deadline-store.js').TrackedDeadline} d
- * @returns {string}
- */
-export function buildReminderText(d) {
-  const remaining = daysUntil(d.dueDate);
-  const who = d.owner || (d.createdBy !== 'unknown' ? `<@${d.createdBy}>` : 'team');
-  const timing =
-    remaining < 0
-      ? `is *${Math.abs(remaining)} day${Math.abs(remaining) === 1 ? '' : 's'} overdue*`
-      : remaining === 0
-        ? 'is *due today*'
-        : `is due in *${remaining} day${remaining === 1 ? '' : 's'}*`;
-
-  const notes = d.notes ? `\n${d.notes}` : '';
-  return (
-    `⏰ Reminder for ${who}\n` +
-    `*${d.title}* ${timing} — ${prettyDate(d.dueDate)}.${notes}\n\n` +
-    'Reply here if you want me to draft the report or find related grants.'
-  );
-}
+import {
+  buildDeadlineReminderBlocks,
+  buildDeadlineReminderText,
+} from '../listeners/views/deadline-reminder-builder.js';
+import { getDueDeadlines, markNotified } from './tools/deadline-store.js';
 
 /**
  * Post reminders for every deadline currently inside its reminder window.
@@ -51,7 +17,11 @@ export async function runDeadlineCheck(client, logger = console) {
 
   for (const d of due) {
     try {
-      await client.chat.postMessage({ channel: d.channelId, text: buildReminderText(d) });
+      await client.chat.postMessage({
+        channel: d.channelId,
+        text: buildDeadlineReminderText(d),
+        blocks: buildDeadlineReminderBlocks(d),
+      });
       markNotified(d.id);
       sent += 1;
     } catch (e) {

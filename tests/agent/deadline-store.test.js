@@ -5,9 +5,12 @@ import {
   _resetDeadlines,
   addDeadline,
   daysUntil,
+  getDeadline,
   getDueDeadlines,
   listDeadlines,
   markNotified,
+  resolveDeadline,
+  snoozeDeadline,
 } from '../../agent/tools/deadline-store.js';
 
 /** ISO date N days from today. */
@@ -64,5 +67,31 @@ describe('deadline-store', () => {
   it('includes overdue deadlines', () => {
     addDeadline({ title: 'Overdue', dueDate: isoInDays(-1), channelId: 'C1', createdBy: 'U1' });
     assert.strictEqual(getDueDeadlines().length, 1);
+  });
+
+  it('resolveDeadline removes it entirely', () => {
+    const rec = addDeadline({ title: 'Done soon', dueDate: isoInDays(2), channelId: 'C1', createdBy: 'U1' });
+    assert.strictEqual(resolveDeadline(rec.id), true);
+    assert.strictEqual(getDeadline(rec.id), undefined);
+    assert.strictEqual(listDeadlines().length, 0);
+    assert.strictEqual(resolveDeadline('nope'), false);
+  });
+
+  it('snoozeDeadline re-arms it but suppresses reminders until the snooze date', () => {
+    const rec = addDeadline({ title: 'Snooze me', dueDate: isoInDays(2), channelId: 'C1', createdBy: 'U1' });
+    markNotified(rec.id);
+    assert.strictEqual(getDueDeadlines().length, 0, 'notified, so not due');
+
+    const updated = snoozeDeadline(rec.id, 1);
+    assert.strictEqual(updated.remindAfter, isoInDays(1));
+    assert.strictEqual(updated.notified, false);
+    // Snoozed until tomorrow, so still not due today...
+    assert.strictEqual(getDueDeadlines().length, 0);
+
+    // ...but a snooze into the past re-surfaces it.
+    snoozeDeadline(rec.id, -1);
+    assert.strictEqual(getDueDeadlines().length, 1);
+
+    assert.strictEqual(snoozeDeadline('missing', 1), undefined);
   });
 });

@@ -20,6 +20,7 @@
  * @property {string} [owner]         Who is responsible (Slack handle or id), if given.
  * @property {string} [notes]         Extra context to include in the reminder.
  * @property {boolean} notified       Whether a reminder has already been sent.
+ * @property {string} [remindAfter]   ISO date; when snoozed, don't nudge again before this.
  */
 
 /** @type {Map<string, TrackedDeadline>} */
@@ -83,7 +84,11 @@ export function daysUntil(dueDate) {
  */
 export function getDueDeadlines() {
   return listDeadlines().filter(
-    (d) => !d.notified && d.channelId !== 'unknown' && daysUntil(d.dueDate) <= d.remindDaysBefore,
+    (d) =>
+      !d.notified &&
+      d.channelId !== 'unknown' &&
+      daysUntil(d.dueDate) <= d.remindDaysBefore &&
+      (!d.remindAfter || daysUntil(d.remindAfter) <= 0),
   );
 }
 
@@ -94,6 +99,41 @@ export function getDueDeadlines() {
 export function markNotified(id) {
   const record = deadlines.get(id);
   if (record) record.notified = true;
+}
+
+/**
+ * Look up a single deadline.
+ * @param {string} id
+ * @returns {TrackedDeadline | undefined}
+ */
+export function getDeadline(id) {
+  return deadlines.get(id);
+}
+
+/**
+ * Mark a deadline done — remove it so it is never nudged again.
+ * @param {string} id
+ * @returns {boolean} whether a deadline was removed
+ */
+export function resolveDeadline(id) {
+  return deadlines.delete(id);
+}
+
+/**
+ * Snooze a deadline: re-arm it and suppress reminders until `days` from today.
+ * @param {string} id
+ * @param {number} [days] Default 1.
+ * @returns {TrackedDeadline | undefined} the updated record, if found
+ */
+export function snoozeDeadline(id, days = 1) {
+  const record = deadlines.get(id);
+  if (!record) return undefined;
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  t.setDate(t.getDate() + days);
+  record.remindAfter = t.toISOString().slice(0, 10);
+  record.notified = false;
+  return record;
 }
 
 /** Clear all deadlines. Test helper. */

@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { beforeEach, describe, it, mock } from 'node:test';
 
-import { buildReminderText, runDeadlineCheck } from '../../agent/deadline-scheduler.js';
+import { runDeadlineCheck } from '../../agent/deadline-scheduler.js';
 import { _resetDeadlines, addDeadline } from '../../agent/tools/deadline-store.js';
 
 /** ISO date N days from today. */
@@ -72,11 +72,12 @@ describe('deadline-scheduler', () => {
     assert.strictEqual(retry, 1);
   });
 
-  it('mentions the owner and shows a friendly date', () => {
-    const rec = addDeadline({ title: 'Q3 filing', dueDate: '2026-08-09', channelId: 'C1', createdBy: 'U1' });
-    const text = buildReminderText(rec);
-    assert.ok(text.includes('Q3 filing'));
-    assert.ok(text.includes('Aug 9, 2026'));
-    assert.ok(text.includes('<@U1>'));
+  it('posts both a text fallback and blocks', async () => {
+    addDeadline({ title: 'Report', dueDate: isoInDays(2), channelId: 'C1', createdBy: 'U1' });
+    const client = fakeClient();
+    await runDeadlineCheck(client, silentLogger);
+    const arg = client.chat.postMessage.mock.calls[0].arguments[0];
+    assert.ok(typeof arg.text === 'string' && arg.text.length > 0);
+    assert.ok(Array.isArray(arg.blocks) && arg.blocks.length > 0);
   });
 });
