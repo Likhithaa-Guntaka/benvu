@@ -2,12 +2,13 @@ import { createSdkMcpServer, query, tool } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod';
 
 import { recordTiming } from '../listeners/feedback-store.js';
+import { sessionStore } from '../thread-context/index.js';
 import { addDeadline, daysUntil } from './tools/deadline-store.js';
 import {
+  createDraftDonorThankYouTool,
+  createDraftImpactReportTool,
   createFindGrantsTool,
   createVolunteerAnnouncementTool,
-  draftDonorThankYouTool,
-  draftImpactReportTool,
   gatherBriefing,
   PREP_BRIEFING_DESCRIPTION,
   PREP_BRIEFING_SCHEMA,
@@ -112,6 +113,15 @@ draft reports, track deadlines, and communicate — all through Slack.
      discussed, what's outstanding, and what's coming up — not a raw list of everything it found.
 3. Present the tool's result simply, in the user's language, keeping its formatting, and offer a next step
 
+## EDITING A RECENT DRAFT
+When you have just drafted something (a donor thank-you, an impact report, or a volunteer
+announcement) and the user's next message is a small change rather than a new request — e.g.
+"make it shorter", "more formal", "warmer", "translate it to Spanish", "cut the last line",
+"add our address" — revise THAT most recent draft and return the full updated version. Do not
+start a new draft from scratch, and do not call a drafting tool again — just rewrite the draft
+yourself with the change applied, keeping everything the user didn't ask to change. If it's
+genuinely a new, unrelated request, treat it normally.
+
 ## POSTING TO A CHANNEL
 - After you create a volunteer announcement, ask: "Want me to post this to a channel? Just reply with the channel name."
 - When the user names a channel, Slack shows it as a <#C0123456|name> link. Call "post_to_channel"
@@ -153,6 +163,22 @@ function orgContext(orgType) {
     `\n\n## THIS USER'S ORGANIZATION\n` +
     `This person works at a "${orgType}" type of nonprofit. Tailor your examples, tone, ` +
     'and suggestions to that context when it is relevant, without forcing it.'
+  );
+}
+
+/**
+ * Extra system-prompt context naming the most recent draft in this conversation,
+ * so an edit request ("make it shorter") reliably targets it. The draft itself is
+ * already in the conversation history; this just flags that one is pending.
+ * @param {{ type: string, content: string } | null} [lastDraft]
+ * @returns {string}
+ */
+function draftContext(lastDraft) {
+  if (!lastDraft) return '';
+  return (
+    `\n\n## PENDING DRAFT\nThe most recent draft you produced in this conversation is a ${lastDraft.type}. ` +
+    'If the user asks to shorten, lengthen, translate, or change the tone of it, revise THAT draft ' +
+    'and return the full updated version rather than starting over.'
   );
 }
 
@@ -233,7 +259,7 @@ const SLACK_MCP_URL = 'https://mcp.slack.com/mcp';
  * @param {string} text - The user's message text.
  * @param {string} [sessionId] - An existing session ID to resume conversation.
  * @param {BenvuDeps} [deps] - Dependencies for tools that need Slack API access.
- * @returns {Promise<{responseText: string, sessionId: string | null, toolsUsed: string[], grants: import('./tools/grant-finder.js').GrantResult[]}>}
+ * @returns {Promise<{responseText: string, sessionId: string | null, toolsUsed: string[], grants: import('./tools/grant-finder.js').GrantResult[], draft: { type: string, content: string } | null}>}
  */
 export async function runBenvuAgent(text, sessionId = undefined, deps = undefined) {
   // Closure-based tools that need deps for Slack API access
@@ -439,14 +465,22 @@ export async function runBenvuAgent(text, sessionId = undefined, deps = undefine
     collectedGrants.push(...grants);
   });
 
+  // Capture the most recent draft (thank-you, report, announcement) so a follow-up
+  // edit can target it. The tool text returned to the model is unchanged.
+  /** @type {{ type: string, content: string } | null} */
+  let collectedDraft = null;
+  const onDraft = (/** @type {{ type: string, content: string }} */ draft) => {
+    collectedDraft = draft;
+  };
+
   const benvuToolsServer = createSdkMcpServer({
     name: 'benvu-tools',
     version: '1.0.0',
     tools: [
       addEmojiReactionTool,
-      createVolunteerAnnouncementTool,
-      draftDonorThankYouTool,
-      draftImpactReportTool,
+      createVolunteerAnnouncementTool(onDraft),
+      createDraftDonorThankYouTool(onDraft),
+      createDraftImpactReportTool(onDraft),
       findGrantsTool,
       markResolvedTool,
       postToChannelTool,
@@ -470,9 +504,14 @@ export async function runBenvuAgent(text, sessionId = undefined, deps = undefine
     allowedTools.push('mcp__slack-mcp__*');
   }
 
+  // If a draft is pending in this conversation, tell the model so an edit request
+  // reliably targets it (the draft content itself is already in the session history).
+  const pendingDraft =
+    deps?.channelId && deps?.threadTs ? sessionStore.getLastDraft(deps.channelId, deps.threadTs) : null;
+
   /** @type {import('@anthropic-ai/claude-agent-sdk').Options} */
   const options = {
-    systemPrompt: BENVU_SYSTEM_PROMPT + orgContext(deps?.orgType),
+    systemPrompt: BENVU_SYSTEM_PROMPT + orgContext(deps?.orgType) + draftContext(pendingDraft),
     mcpServers,
     allowedTools,
     permissionMode: 'bypassPermissions',
@@ -502,5 +541,17 @@ export async function runBenvuAgent(text, sessionId = undefined, deps = undefine
 
   let responseText = responseParts.join('\n');
   responseText += outcomeMetricLine(toolsUsed, Date.now() - startTime);
-  return { responseText, sessionId: newSessionId, toolsUsed: [...toolsUsed], grants: collectedGrants };
+
+  // Remember a freshly created draft so a follow-up edit in this thread can target it.
+  if (collectedDraft && deps?.channelId && deps?.threadTs) {
+    sessionStore.setLastDraft(deps.channelId, deps.threadTs, collectedDraft);
+  }
+
+  return {
+    responseText,
+    sessionId: newSessionId,
+    toolsUsed: [...toolsUsed],
+    grants: collectedGrants,
+    draft: collectedDraft,
+  };
 }

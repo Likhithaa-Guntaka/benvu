@@ -50,6 +50,29 @@ describe('SessionStore', () => {
     assert.strictEqual(store.getSession('C1', 'T1'), 'sid-new');
   });
 
+  describe('last draft', () => {
+    it('stores and retrieves a draft per channel/thread', () => {
+      assert.strictEqual(store.getLastDraft('C1', 'T1'), null);
+      store.setLastDraft('C1', 'T1', { type: 'impact report', content: 'REPORT...' });
+      assert.deepStrictEqual(store.getLastDraft('C1', 'T1'), { type: 'impact report', content: 'REPORT...' });
+      // Isolated per thread.
+      assert.strictEqual(store.getLastDraft('C1', 'T2'), null);
+    });
+
+    it('keeps only the most recent draft for a thread', () => {
+      store.setLastDraft('C1', 'T1', { type: 'donor thank-you', content: 'a' });
+      store.setLastDraft('C1', 'T1', { type: 'impact report', content: 'b' });
+      assert.strictEqual(store.getLastDraft('C1', 'T1').type, 'impact report');
+    });
+
+    it('expires a draft after the TTL', async () => {
+      const shortStore = new SessionStore(0);
+      shortStore.setLastDraft('C1', 'T1', { type: 'donor thank-you', content: 'x' });
+      await new Promise((r) => setTimeout(r, 5));
+      assert.strictEqual(shortStore.getLastDraft('C1', 'T1'), null);
+    });
+  });
+
   describe('org type', () => {
     it('stores and retrieves a user org type', () => {
       store.setOrgType('U1', 'education');

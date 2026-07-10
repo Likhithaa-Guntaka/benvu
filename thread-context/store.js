@@ -18,6 +18,13 @@ export class SessionStore {
     /** @type {Map<string, StoreEntry>} */
     this._store = new Map();
     /**
+     * Most recent draft (thank-you, report, announcement) per conversation, so a
+     * follow-up like "make it shorter" edits that draft instead of starting over.
+     * Keyed `${channelId}:${threadTs}`, same TTL as sessions.
+     * @private @type {Map<string, { type: string, content: string, timestamp: number }>}
+     */
+    this._lastDrafts = new Map();
+    /**
      * User-level org-type preferences, keyed by user ID. Unlike sessions, these
      * are durable (no TTL) since they represent a persistent choice — only bounded
      * by _maxEntries with oldest-first eviction.
@@ -180,6 +187,40 @@ export class SessionStore {
       timestamp: Date.now(),
     });
     this._cleanup();
+  }
+
+  /**
+   * Remember the most recent draft in a conversation, so a follow-up edit
+   * ("make it shorter", "translate it") revises this draft rather than starting over.
+   * @param {string} channelId
+   * @param {string} threadTs
+   * @param {{ type: string, content: string }} draft
+   * @returns {void}
+   */
+  setLastDraft(channelId, threadTs, draft) {
+    this._lastDrafts.set(`${channelId}:${threadTs}`, { ...draft, timestamp: Date.now() });
+    if (this._lastDrafts.size > this._maxEntries) {
+      const sorted = [...this._lastDrafts.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+      for (const [k] of sorted.slice(0, this._lastDrafts.size - this._maxEntries)) this._lastDrafts.delete(k);
+    }
+  }
+
+  /**
+   * The most recent draft for a conversation, or null (expired or none). Same TTL
+   * as sessions, so a stale draft doesn't linger past the conversation.
+   * @param {string} channelId
+   * @param {string} threadTs
+   * @returns {{ type: string, content: string } | null}
+   */
+  getLastDraft(channelId, threadTs) {
+    const key = `${channelId}:${threadTs}`;
+    const entry = this._lastDrafts.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > this._ttlSeconds * 1000) {
+      this._lastDrafts.delete(key);
+      return null;
+    }
+    return { type: entry.type, content: entry.content };
   }
 
   /**

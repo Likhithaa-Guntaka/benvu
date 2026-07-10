@@ -48,18 +48,30 @@ function draftReport(impact) {
   );
 }
 
-export const draftImpactReportTool = tool(
-  'draft_impact_report',
-  'Turn a short, one-line description of the impact a nonprofit made into a full, ' +
-    'ready-to-use impact report draft. Use this when a user needs help writing a report ' +
-    'and gives you a brief description of what they accomplished.',
-  {
-    impact: z
-      .string()
-      .describe('A one-line description of the impact the organization made, e.g. "fed 500 families this winter".'),
-  },
-  async ({ impact }) => {
-    const report = draftReport(impact);
-    return { content: [{ type: 'text', text: report }] };
-  },
-);
+/**
+ * Build the draft_impact_report tool. `onDraft` receives the draft's type and
+ * content each time the tool runs, so the caller can remember the most recent
+ * draft for follow-up edits. The text returned to the model is unchanged.
+ * @param {(draft: { type: string, content: string }) => void} [onDraft]
+ */
+export function createDraftImpactReportTool(onDraft) {
+  return tool(
+    'draft_impact_report',
+    'Turn a short, one-line description of the impact a nonprofit made into a full, ' +
+      'ready-to-use impact report draft. Use this when a user needs help writing a report ' +
+      'and gives you a brief description of what they accomplished.',
+    {
+      impact: z
+        .string()
+        .describe('A one-line description of the impact the organization made, e.g. "fed 500 families this winter".'),
+    },
+    async ({ impact }) => {
+      const report = draftReport(impact);
+      if (onDraft) onDraft({ type: 'impact report', content: report });
+      return { content: [{ type: 'text', text: report }] };
+    },
+  );
+}
+
+/** Default draft_impact_report tool with no draft capture. */
+export const draftImpactReportTool = createDraftImpactReportTool();
