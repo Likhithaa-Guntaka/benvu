@@ -96,7 +96,6 @@ export async function handleOrgTypeSelected({ ack, body, client, context, logger
     // re-picks — so a dedicated onboarded flag (which clearOrgType never resets)
     // is the real signal.
     const isFirstOnboarding = !sessionStore.hasOnboarded(userId);
-    logger.info(`[org-select] user=${userId} hasOnboarded=${!isFirstOnboarding} picking=${org.id}`);
 
     // Durable persistence (survives restarts) is handled by the disk-backed store.
     sessionStore.setOrgType(userId, org.id);
