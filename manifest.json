@@ -1,10 +1,12 @@
 {
   "display_information": {
-    "name": "benvu"
+    "name": "benvu",
+    "description": "Benvu is your nonprofit’s AI teammate: finds grants, drafts reports and donor notes, and tracks deadlines — in any language.",
+    "long_description": "Benvu is an AI teammate for nonprofit staff, built to help small teams do more with less time.\n\n🌱 Find grants — search real, open U.S. federal funding that fits your mission and budget.\n📝 Draft reports and donor thank-yous — turn a few notes into a ready-to-send draft in seconds.\n⏰ Track deadlines — set a reminder and Benvu nudges your team before it’s due.\n\nMessage Benvu directly, mention it in a channel, or use /grant, /report, and /deadline. It replies in the language you write in."
   },
   "features": {
     "agent_view": {
-      "agent_description": "Hi, I am an agent built using Bolt for JavaScript. I am here to help you out!",
+      "agent_description": "I’m Benvu, your nonprofit’s AI teammate.\n🌱 Find grants — real, open federal funding that fits your mission.\n📝 Draft impact reports and donor thank-yous in seconds.\n⏰ Track deadlines so nothing slips through.\nI reply in any language you write in.",
       "suggested_prompts": []
     },
     "app_home": {
