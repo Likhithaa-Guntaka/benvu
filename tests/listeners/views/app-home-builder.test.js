@@ -32,16 +32,21 @@ function cardButtons(view) {
 }
 
 describe('buildAppHomeView', () => {
-  it('leads with the Benvu name, tagline, and value line (pre-selection)', () => {
+  it('leads with the wordmark image and the value line — no header or tagline (pre-selection)', () => {
     const view = buildAppHomeView();
     assert.strictEqual(view.type, 'home');
-    const h = view.blocks.find((b) => b.type === 'header');
-    assert.strictEqual(h.text.text, 'Benvu');
+    // The wordmark image already shows the name and tagline, so there's no header
+    // block and no PICKER_TAGLINE section — those would duplicate the image.
+    assert.strictEqual(
+      view.blocks.find((b) => b.type === 'header'),
+      undefined,
+    );
+    assert.strictEqual(view.blocks[0].type, 'image');
 
     const sections = blocksOfType(view, 'section').map((b) => b.text.text);
-    assert.ok(sections.includes(PICKER_TAGLINE));
+    assert.ok(!sections.includes(PICKER_TAGLINE), 'tagline is not duplicated in text');
     assert.ok(sections.includes(PICKER_VALUE));
-    // The old branded-header copy must not leak into the picker screen.
+    // The onboarded branded-header copy must not leak into the picker screen.
     assert.ok(!sections.includes(TAGLINE));
     assert.ok(!sections.includes(DESCRIPTION));
   });
@@ -61,20 +66,20 @@ describe('buildAppHomeView', () => {
       assert.ok(sections.includes(PICKER_PROMPT));
     });
 
-    it('has the exact block order: wordmark image, Benvu, tagline, value, divider, prompt, then picker rows', () => {
+    it('has the exact block order: wordmark image, value, divider, prompt, then picker rows', () => {
       const blocks = buildAppHomeView().blocks;
-      // The wordmark image leads the pre-selection screen, above the Benvu header.
+      // The wordmark image leads; no header or tagline block, since the image
+      // already carries the name and tagline.
       assert.strictEqual(blocks[0].type, 'image');
       assert.ok(blocks[0].image_url.startsWith('https://'));
       assert.strictEqual(blocks[0].alt_text, 'Benvu — your AI teammate for nonprofits');
-      assert.strictEqual(blocks[1].type, 'header');
-      assert.strictEqual(blocks[1].text.text, 'Benvu');
-      assert.strictEqual(blocks[2].text.text, PICKER_TAGLINE);
-      assert.strictEqual(blocks[3].text.text, PICKER_VALUE);
-      assert.strictEqual(blocks[4].type, 'divider');
-      assert.strictEqual(blocks[5].text.text, PICKER_PROMPT);
+      assert.strictEqual(blocks[1].type, 'section');
+      assert.strictEqual(blocks[1].text.text, PICKER_VALUE);
+      assert.strictEqual(blocks[2].type, 'divider');
+      assert.strictEqual(blocks[3].type, 'section');
+      assert.strictEqual(blocks[3].text.text, PICKER_PROMPT);
       // Everything after the prompt is a picker actions row — nothing trails the buttons.
-      const tail = blocks.slice(6);
+      const tail = blocks.slice(4);
       assert.ok(tail.length > 0);
       assert.ok(
         tail.every((b) => b.type === 'actions' && String(b.block_id).startsWith('org_type_select_')),

@@ -1,5 +1,5 @@
 import { getOrgTypeById, ORG_TYPES } from '../org-types.js';
-import { actions, button, context, divider, header, section } from './kit.js';
+import { actions, button, context, divider, section } from './kit.js';
 import { buildPromptButtons } from './onboarding-builder.js';
 
 /**
@@ -198,8 +198,9 @@ export function buildAppHomeView(_botUserId = null, orgType = null, opts = {}) {
   const notice = (opts.notice || '').trim();
 
   if (!org) {
-    // Pre-selection: a short branded intro, then one question and the picker.
-    // Nothing trails the buttons — a clean descent from name to choice.
+    // Pre-selection: the wordmark image (which already shows the name and
+    // tagline), then the value line, one question, and the picker. Nothing trails
+    // the buttons — a clean descent from name to choice.
     /** @type {import('@slack/types').KnownBlock[]} */
     const blocks = [
       {
@@ -207,8 +208,6 @@ export function buildAppHomeView(_botUserId = null, orgType = null, opts = {}) {
         image_url: 'https://raw.githubusercontent.com/Likhithaa-Guntaka/benvu/main/assets/benvu-wordmark.png',
         alt_text: 'Benvu — your AI teammate for nonprofits',
       },
-      header('Benvu'),
-      section(PICKER_TAGLINE),
       section(PICKER_VALUE),
       divider(),
       section(PICKER_PROMPT),
