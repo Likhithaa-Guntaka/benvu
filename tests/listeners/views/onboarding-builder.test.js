@@ -49,9 +49,18 @@ describe('buildWelcomeDmBlocks', () => {
   it('opens with a header, an intro section, the picker, and a next-step context', () => {
     const blocks = buildWelcomeDmBlocks();
     assert.strictEqual(blocks[0].type, 'header');
-    assert.ok(blocks.some((b) => b.type === 'section' && /what kind of organization/i.test(b.text.text)));
+    assert.strictEqual(blocks[0].text.text, 'Welcome to Benvu');
+    // Intro uses the new voice, matching the Home picker, and poses the same question.
+    const intro = blocks.find((b) => b.type === 'section');
+    assert.match(intro.text.text, /your AI teammate for nonprofits/);
+    assert.match(intro.text.text, /What kind of work do you do\? I'll tailor everything to it\./);
+    // The old copy must be gone.
+    assert.ok(!/what kind of organization/i.test(intro.text.text));
     assert.ok(blocks.some((b) => b.block_id === 'org_type_select'));
-    assert.strictEqual(blocks.at(-1).type, 'context');
+    // Closing nudge just prompts the click — no echo of the section's promise.
+    const closing = blocks.at(-1);
+    assert.strictEqual(closing.type, 'context');
+    assert.strictEqual(closing.elements[0].text, 'Pick one to get started.');
     assertNoEmoji(blocks);
   });
 });

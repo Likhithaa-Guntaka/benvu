@@ -53,11 +53,11 @@ export function buildWelcomeDmBlocks() {
   return [
     header('Welcome to Benvu'),
     section(
-      "I'm Benvu. I find grants, draft reports, and track deadlines, in any language.\n\n" +
-        'To get started, what kind of organization are you?',
+      "I'm Benvu, your AI teammate for nonprofits. I find real grants, draft your reports, and track every deadline.\n\n" +
+        "What kind of work do you do? I'll tailor everything to it.",
     ),
     buildOrgTypeActionsBlock(),
-    context('Pick one and I will tailor my suggestions. You can also just message me anytime, in any language.'),
+    context('Pick one to get started.'),
   ];
 }
 
