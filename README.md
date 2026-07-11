@@ -1,334 +1,102 @@
-# Benvu: Nonprofit Assistant Agent (Bolt for JavaScript and Claude Agent SDK)
+# Benvu
 
-Meet Benvu — an AI-powered assistant for nonprofit teams that lives in Slack. Benvu helps staff find grants, draft impact reports, and track deadlines, and it replies in whatever language you write in, all without leaving the conversation.
+**Your AI teammate for nonprofits.**
 
-Built with [Bolt for JavaScript](https://tools.slack.dev/bolt-js/) and the [Claude Agent SDK](https://platform.claude.com/docs/en/agent-sdk/overview) using models from [Anthropic](https://www.anthropic.com).
+Benvu lives inside Slack and does the back-office work that pulls nonprofit staff away from their mission: finding real federal grants, drafting reports and donor notes, tracking deadlines, summarizing meetings, and searching what your team already discussed. No new tools, no dashboards, no forms. Just type what you need, in any language, and Benvu handles it.
 
-## App Overview
+Built for the [Slack Agent Builder Challenge](https://slackagentchallenge.devpost.com/) — Agent for Good track.
 
-Benvu gives your team instant help through four entry points:
+---
 
-* **App Home** — Users open Benvu's Home tab and choose from three quick actions (Find Grants, Draft a Report, Track a Deadline), or just describe what they need. Benvu starts a DM thread and responds.
-* **Direct Messages** — Users message Benvu directly to describe what they need. Benvu responds in-thread, maintaining context across follow-ups.
-* **Channel @mentions** — Users mention `@Benvu` in any channel to get help without leaving the conversation.
-* **Assistant Panel** — Users click _Add Agent_ in Slack, select Benvu, and pick from suggested prompts or describe a need.
+## What it does
 
-Benvu detects the language each user writes in and replies in that same language.
+**Find grants.** Searches live U.S. federal grants via the Grants.gov API, filtered to your org type's funding categories. Returns structured grant cards with amount, deadline, agency, and a one-click Track deadline button.
 
-Benvu's tools:
+**Draft documents.** Impact reports, donor thank-yous, volunteer announcements. Give Benvu one line and it writes the full draft in your language. Follow-up messages revise the same draft in place.
 
-* **Find Grants** — Searches the live [Grants.gov](https://www.grants.gov) federal database (real, public API) and returns matches with name, deadline, award amount, and eligibility.
-* **Draft a Report / Donor Thank-You / Volunteer Announcement** — Turns a one-line prompt into a ready-to-use draft.
-* **Summarize Meeting Notes** — Turns pasted notes into a summary with action items.
-* **Track a Deadline** — Remembers a deadline and **automatically nudges the right person in Slack** before it's due (background scheduler).
-* **Search Workspace** — Searches the team's Slack messages and files in real time via the **Real-Time Search API** to ground answers in what the team actually discussed.
+**Track deadlines.** Name something due and Benvu remembers it, then nudges your team in Slack before it arrives. Mark done or snooze from the reminder.
 
-### Real-Time Search (RTS) API
+**Summarize meetings.** Paste notes, get a clean summary with decisions and action items.
 
-Benvu uses Slack's [Real-Time Search API](https://docs.slack.dev/apis/web-api/real-time-search-api/) (`assistant.search.context`) so it can pull real context from your workspace on demand — past grant discussions, donor updates, or who owns a deadline — without anything being stored outside Slack. It runs on the user's token (the same connection used for the MCP Server) and the `search:read.*` scopes in [manifest.json](./manifest.json).
+**Search your workspace.** Uses Slack's Real-Time Search API to ground answers in what your team already said, not just what Benvu knows.
 
-### Slack MCP Server
+**Multilingual.** Detects the language you write in and replies in it, across all capabilities.
 
-Benvu also works with the [Slack MCP Server](https://docs.slack.dev/ai/slack-mcp-server), giving it the ability to search messages and files, read channel history and threads, send messages, schedule messages, and create or update Slack canvases. When deployed with OAuth (HTTP mode), Benvu automatically connects to the Slack MCP Server using the user's token, unlocking these capabilities on top of the built-in tools.
+---
+
+## Org-type tailoring
+
+Benvu asks what kind of work you do and reconfigures itself around the answer. Six org types are deeply tailored with sector-specific grant defaults, operational prompts, and a flagship capability:
+
+| Org type | Grant categories | Flagship |
+|---|---|---|
+| Food Bank / Food & Nutrition | FN, ISS | TEFAP compliance deadline seeding |
+| Mental Health / Crisis Support | HL, ISS | Privacy-aware mode (warns before drafting client identifiers) |
+| Immigrant & Refugee Services | ISS, CD, ELT | Multilingual-first (intake + translate by default) |
+| Housing & Homelessness | HO, ISS | HUD CoC deadline seeding |
+| Education / Youth Programs | ED | Academic-calendar-aware deadline framing |
+| Arts & Culture | AR, HU | NEA 1:1 match tracker |
+
+The App Home also shows a live count of grants closing in the next 30 days, pulled from Grants.gov and filtered to your org's funding categories.
+
+---
+
+## How to reach Benvu
+
+- **Direct message** — type anything in any language
+- **@mention** in a channel — responds in a thread
+- **Slash commands** — `/grant`, `/report`, `/deadline`, `/announce`, `/benvu` (help)
+- **Message shortcut** — "Send to Benvu" from any message's ⋯ menu
+- **Emoji reactions** — 📋 summarize, 💰 find grants, 📝 draft from a message
+- **App Home tab** — org picker, tailored quick actions, live grant count
+- **Assistant panel** — suggested prompts in a new assistant thread
+
+---
+
+## Tech stack
+
+- **Slack Bolt for JavaScript** (Socket Mode + OAuth/HTTP)
+- **Claude Agent SDK** — agent reasoning, tool orchestration
+- **In-process MCP server** — all 10 tools registered via `createSdkMcpServer()`
+- **Hosted Slack MCP Server** — native Slack read/write/canvas when user token present
+- **Slack Real-Time Search (RTS) API** — `assistant.search.context` for workspace search
+- **Grants.gov API** — Search2 + fetchOpportunity (live, no key required)
+- **Zod** for tool schemas, **Biome** for lint/format, **tsc --checkJs** for types
+- **287 tests** via node:test, all passing
+
+---
 
 ## Setup
 
-Before getting started, make sure you have a development workspace where you have permissions to install apps.
-
-### Developer Program
-
-Join the [Slack Developer Program](https://api.slack.com/developer-program) for exclusive access to sandbox environments for building and testing your apps, tooling, and resources created to help you build and grow.
-
-### Create the Slack app
-
-<details><summary><strong>Using Slack CLI</strong></summary>
-
-Install the latest version of the Slack CLI for your operating system:
-
-* [Slack CLI for macOS & Linux](https://docs.slack.dev/tools/slack-cli/guides/installing-the-slack-cli-for-mac-and-linux/)
-* [Slack CLI for Windows](https://docs.slack.dev/tools/slack-cli/guides/installing-the-slack-cli-for-windows/)
-
-You'll also need to log in if this is your first time using the Slack CLI.
-
-```sh
-slack login
-```
-
-#### Initializing the project
-
-```sh
-slack create my-benvu-agent --template slack-samples/bolt-js-support-agent --subdir claude-agent-sdk
-cd my-benvu-agent
-```
-
-</details>
-
-<details><summary><strong>Using App Settings</strong></summary>
-
-#### Create Your Slack App
-
-1. Open [https://api.slack.com/apps/new](https://api.slack.com/apps/new) and choose "From an app manifest"
-2. Choose the workspace you want to install the application to
-3. Copy the contents of [manifest.json](./manifest.json) into the text box that says `*Paste your manifest code here*` (within the JSON tab) and click _Next_
-4. Review the configuration and click _Create_
-5. Click _Install to Workspace_ and _Allow_ on the screen that follows. You'll then be redirected to the App Configuration dashboard.
-
-#### Environment Variables
-
-Before you can run the app, you'll need to store some environment variables.
-
-1. Rename `.env.sample` to `.env`.
-2. Open your apps setting page from [this list](https://api.slack.com/apps), click _OAuth & Permissions_ in the left hand menu, then copy the _Bot User OAuth Token_ into your `.env` file under `SLACK_BOT_TOKEN`.
-
-```sh
-SLACK_BOT_TOKEN=YOUR_SLACK_BOT_TOKEN
-```
-
-3. Click _Basic Information_ from the left hand menu and follow the steps in the _App-Level Tokens_ section to create an app-level token with the `connections:write` scope. Copy that token into your `.env` as `SLACK_APP_TOKEN`.
-
-```sh
-SLACK_APP_TOKEN=YOUR_SLACK_APP_TOKEN
-```
-
-#### Initializing the project
-
-```sh
-git clone https://github.com/slack-samples/bolt-js-support-agent.git my-benvu-agent
-cd my-benvu-agent/claude-agent-sdk
-```
-
-</details>
-
-#### Install dependencies
-
-```sh
+```bash
+git clone https://github.com/Likhithaa-Guntaka/benvu
+cd benvu
 npm install
-```
-
-## Providers
-
-### Anthropic Setup
-
-Benvu runs on Claude through the Claude Agent SDK. The SDK resolves credentials automatically, so you have two options:
-
-**Option A — Claude Code session (no API key).** If you're signed in to [Claude Code](https://claude.com/claude-code) (a subscription or OAuth session), Benvu authenticates through that session and needs **no `ANTHROPIC_API_KEY`**. This is the default in the sandbox — leave the key unset in `.env` and you're done. On startup the app logs `Claude auth: claude-code-session` to confirm.
-
-**Option B — External API key.** To use the external Claude API instead:
-
-1. Create an API key from your [Anthropic dashboard](https://console.anthropic.com/settings/keys).
-2. Set it in `.env`:
-
-```sh
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-The app logs `Claude auth: api-key` when a key is used. A placeholder or empty value is ignored so it can't override a working session.
-
-## Development
-
-### Starting the app
-
-<details><summary><strong>Using the Slack CLI</strong></summary>
-
-#### Slack CLI
-
-```sh
-slack run
-```
-
-</details>
-
-<details><summary><strong>Using the Terminal</strong></summary>
-
-#### Terminal
-
-```sh
+cp .env.sample .env
+# Fill in SLACK_APP_TOKEN and SLACK_BOT_TOKEN (see .env.sample)
 npm start
 ```
 
-</details>
+For OAuth mode (enables RTS and Slack MCP): use `node app-oauth.js` with the additional OAuth vars from `.env.sample`.
 
-<details><summary><strong>Using OAuth HTTP Server (with ngrok)</strong></summary>
+---
 
-#### OAuth HTTP Server
+## Known limitations
 
-This mode uses an HTTP server instead of Socket Mode, which is required for OAuth-based distribution.
+- Most state is in-memory and resets on server restart (deadlines, match progress, sessions). Only org-type selections persist to disk.
+- Grants are U.S. federal only via Grants.gov. No state, local, or foundation grants.
+- RTS and Slack MCP require a user token (OAuth mode). Socket Mode gets a graceful fallback message.
+- The pre-selection Home wordmark image is served from this public repo's raw URL. Making the repo private would break it.
+- Deadline reminders are process-local. A server restart clears tracked deadlines.
 
-1. Install [ngrok](https://ngrok.com/download) and start a tunnel:
+---
 
-```sh
-ngrok http 3000
-```
+## Acknowledgment
 
-2. Copy the `https://*.ngrok-free.app` URL from the ngrok output.
+Benvu was built with significant assistance from Claude Code, Anthropic's agentic coding tool, which helped implement, test, and refine the codebase throughout the hackathon. The product direction, design decisions, and nonprofit domain research are our own.
 
-<details><summary><strong>Using Slack CLI</strong></summary>
+---
 
-#### Slack CLI
+## License
 
-3. Update `manifest.json` for HTTP mode:
-   - Set `socket_mode_enabled` to `false`
-   - Replace `ngrok-free.app` with your ngrok domain (e.g. `YOUR_NGROK_SUBDOMAIN.ngrok-free.app`)
-
-4. Create a new local dev app:
-
-```sh
-slack install -E local
-```
-
-5. _(Slack CLI < v4.1.0 only)_ Enable MCP for your app:
-   - Run `slack app settings` to open your app's settings
-   - Navigate to **Agents & AI Apps** in the left-side navigation
-   - Toggle **Model Context Protocol** on
-
-6. Update your `.env` OAuth environment variables:
-   - Run `slack app settings` to open App Settings
-   - Copy **Client ID**, **Client Secret**, and **Signing Secret**
-   - Update `SLACK_REDIRECT_URI` in `.env` with your ngrok domain
-
-```sh
-SLACK_CLIENT_ID=YOUR_CLIENT_ID
-SLACK_CLIENT_SECRET=YOUR_CLIENT_SECRET
-SLACK_SIGNING_SECRET=YOUR_SIGNING_SECRET
-SLACK_REDIRECT_URI=https://YOUR_NGROK_SUBDOMAIN.ngrok-free.app/slack/oauth_redirect
-```
-
-7. Start the app:
-
-```sh
-slack run app-oauth.js
-```
-
-8. Click the install URL printed in the terminal to install the app to your workspace via OAuth.
-
-</details>
-
-<details><summary><strong>Using the Terminal</strong></summary>
-
-#### Terminal
-
-3. Create your Slack app at [api.slack.com/apps/new](https://api.slack.com/apps/new) using [`manifest.json`](./manifest.json). Before pasting the manifest, set `socket_mode_enabled` to `false` and replace `ngrok-free.app` with your ngrok domain.
-
-4. Install the app to your workspace and copy the following values into your `.env`:
-   - **Signing Secret** — from _Basic Information_
-   - **Bot User OAuth Token** — from _OAuth & Permissions_
-   - **Client ID** and **Client Secret** — from _Basic Information_
-
-```sh
-SLACK_BOT_TOKEN=xoxb-YOUR_BOT_TOKEN
-SLACK_CLIENT_ID=YOUR_CLIENT_ID
-SLACK_CLIENT_SECRET=YOUR_CLIENT_SECRET
-SLACK_SIGNING_SECRET=YOUR_SIGNING_SECRET
-SLACK_REDIRECT_URI=https://YOUR_NGROK_SUBDOMAIN.ngrok-free.app/slack/oauth_redirect
-```
-
-Replace `your-subdomain` in `SLACK_REDIRECT_URI` with your ngrok subdomain.
-
-5. Start the app:
-
-```sh
-node app-oauth.js
-```
-
-6. Click the install URL printed in the terminal to install the app to your workspace via OAuth.
-
-</details>
-
-> **Note:** Each time ngrok restarts, it generates a new URL. You'll need to update the ngrok domain in `manifest.json`, `SLACK_REDIRECT_URI` in your `.env`, and re-install the app.
-
-</details>
-
-### Using the App
-
-Once Benvu is running, there are several ways to interact:
-
-**App Home** — Open Benvu in Slack and click the _Home_ tab. You'll see three quick-action buttons (_Find Grants_, _Draft a Report_, _Track a Deadline_). Click one to get started, or just describe what you need. Benvu will start a DM thread with you.
-
-**Direct Messages** — Open a DM with Benvu. You'll see suggested prompts like _Find Grants_, _Draft a Report_, and _Track a Deadline_ — pick one or describe your own need in any language. Benvu will react with :eyes: while processing, then reply in a thread. Send follow-up messages in the same thread and Benvu will maintain the full conversation context.
-
-**Channel @mentions** — Invite Benvu to a channel by typing `/invite @Benvu` in the message box, then type `@Benvu` followed by what you need. Benvu responds in a thread so the channel stays clean.
-
-**Assistant Panel** — Click _Add Agent_ in the top-right corner of Slack, select Benvu from the list, then pick a suggested prompt or type a message.
-
-Benvu will add a :white_check_mark: reaction when it believes a request has been handled, and occasionally adds a contextual emoji reaction to keep things friendly.
-
-### Linting
-
-```sh
-# Run Biome for linting and formatting
-npm run lint
-
-# Auto-fix lint and format issues
-npm run lint:fix
-```
-
-### Testing
-
-```sh
-# Run unit tests
-npm test
-```
-
-## Project Structure
-
-### `manifest.json`
-
-`manifest.json` is a configuration for Slack apps. With a manifest, you can create an app with a pre-defined configuration, or adjust the configuration of an existing app.
-
-### `app.js`
-
-`app.js` is the entry point for the application and is the file you'll run to start the server. This project aims to keep this file as thin as possible, primarily using it as a way to route inbound requests.
-
-### `app-oauth.js`
-
-`app-oauth.js` is an alternative entry point that runs the app in HTTP mode instead of Socket Mode. This is intended for deployments that use OAuth for app distribution. See the OAuth HTTP Server section under Development for setup instructions.
-
-### `/listeners`
-
-Every incoming request is routed to a "listener". This directory groups each listener based on the Slack Platform feature used.
-
-**`/listeners/events`** — Handles incoming events:
-
-* `app-home-opened.js` — Publishes the App Home view with category buttons, or pins suggested prompts to the agent DM Messages tab (branches on `event.tab`).
-* `app-mentioned.js` — Responds to `@Benvu` mentions in channels.
-* `message.js` — Responds to direct messages from users.
-
-**`/listeners/actions`** — Handles interactive components:
-
-* `issue-buttons.js` — Opens the issue submission modal when a category button is clicked.
-* `feedback-buttons.js` — Handles thumbs up/down feedback on Benvu's responses.
-
-**`/listeners/views`** — Handles view submissions and builds Block Kit views:
-
-* `issue-modal.js` — Processes modal submissions, starts a DM thread, and runs the agent.
-* `app-home-builder.js` — Constructs the App Home Block Kit view.
-* `issue-modal-builder.js` — Constructs the issue submission modal.
-* `feedback-builder.js` — Creates the feedback button block attached to responses.
-
-### `/agent`
-
-The `benvu.js` file configures the Claude Agent SDK agent with a system prompt, tools registered via an in-process MCP server, and a `runBenvuAgent()` function that handles sending queries and collecting responses.
-
-Tools that need Slack API access (emoji reactions, mark resolved) are created as closures inside `runBenvuAgent()` that capture the dependencies. Static tools (grant finder, report drafter, deadline reminder) remain as module-level exports in `agent/tools/`.
-
-The `tools` directory contains three nonprofit assistant tools defined using `tool()` from the Claude Agent SDK with Zod v4 schemas.
-
-### `/thread-context`
-
-The `store.js` file implements an in-memory session ID store, keyed by channel and thread. The Claude Agent SDK manages conversation history server-side via sessions, so only session IDs need to be tracked locally for resuming conversations. The store has TTL-based cleanup (1 hour) and a max entry limit (1000).
-
-## Troubleshooting
-
-### MCP Server connection error: `App is not enabled for Slack MCP server access`
-
-If you see an error like:
-
-```
-Error: Streamable HTTP error: Error POSTing to endpoint: {"jsonrpc":"2.0","id":null,"error":{"code":-32600,"message":"App is not enabled for Slack MCP server access. Please enable it here: https://api.slack.com/apps/YOUR_APP_ID/app-assistant"}}
-```
-
-This means the Slack MCP feature has not been enabled for your app. There is no manifest property for this yet, so it must be toggled on manually:
-
-1. Run `slack app settings` to open your app's settings page (or visit [api.slack.com/apps](https://api.slack.com/apps) and select your app)
-2. Navigate to **Agents & AI Apps** in the left-side navigation
-3. Toggle **Slack Model Context Protocol** on
+MIT
