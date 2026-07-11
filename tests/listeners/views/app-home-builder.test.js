@@ -7,6 +7,7 @@ import {
   CATEGORIES,
   CHANGE_ORG_ACTION,
   CHANGE_ORG_VALUE,
+  DESCRIPTION,
   greeting,
   TAGLINE,
 } from '../../../listeners/views/app-home-builder.js';
@@ -84,20 +85,57 @@ describe('buildAppHomeView', () => {
     });
   });
 
+  describe('branded header (onboarded)', () => {
+    const view = () => buildAppHomeView(null, 'food_bank', { firstName: 'A', now: new Date('2026-07-10T09:00:00') });
+
+    it('leads with the Benvu name, tagline, and description, then a divider', () => {
+      const blocks = view().blocks;
+      // The very first block is the "Benvu" header (the largest element).
+      assert.strictEqual(blocks[0].type, 'header');
+      assert.strictEqual(blocks[0].text.text, 'Benvu');
+      // Tagline and description follow as sections, before any personalization.
+      assert.strictEqual(blocks[1].text.text, TAGLINE);
+      assert.strictEqual(blocks[2].text.text, DESCRIPTION);
+      assert.strictEqual(blocks[3].type, 'divider');
+    });
+
+    it('exactly one header block, and it is the brand name (greeting is a section)', () => {
+      const headers = view().blocks.filter((b) => b.type === 'header');
+      assert.strictEqual(headers.length, 1);
+      assert.strictEqual(headers[0].text.text, 'Benvu');
+    });
+
+    it('is identical across org types — the header is stable branding', () => {
+      const head = (id) =>
+        buildAppHomeView(null, id, { firstName: 'A', now: new Date('2026-07-10T09:00:00') }).blocks.slice(0, 4);
+      assert.deepStrictEqual(head('food_bank'), head('arts_culture'));
+      assert.deepStrictEqual(head('food_bank'), head('general'));
+    });
+
+    it('the branded header contains no emoji', () => {
+      assertNoEmoji(view().blocks.slice(0, 4));
+    });
+  });
+
   describe('after onboarding', () => {
-    it('greets the user by name and time of day in the header', () => {
+    // The greeting is a bold section (not a header), so "Benvu" stays the largest element.
+    const greetingText = (view) =>
+      view.blocks.find((b) => b.type === 'section' && /^\*Good (morning|afternoon|evening)/.test(b.text?.text || ''))
+        ?.text.text;
+
+    it('greets the user by name and time of day in a bold section, below the Benvu header', () => {
       const view = buildAppHomeView(null, 'mental_health', {
         firstName: 'Dedeepya',
         now: new Date('2026-07-10T14:30:00'),
       });
-      const h = view.blocks.find((b) => b.type === 'header');
-      assert.strictEqual(h.text.text, 'Good afternoon, Dedeepya!');
+      // "Benvu" is the only header; the greeting is a bold section beneath it.
+      assert.strictEqual(view.blocks.find((b) => b.type === 'header').text.text, 'Benvu');
+      assert.strictEqual(greetingText(view), '*Good afternoon, Dedeepya!*');
     });
 
     it('falls back to a neutral greeting when the name is missing', () => {
       const view = buildAppHomeView(null, 'mental_health', { now: new Date('2026-07-10T20:00:00') });
-      const h = view.blocks.find((b) => b.type === 'header');
-      assert.strictEqual(h.text.text, 'Good evening!');
+      assert.strictEqual(greetingText(view), '*Good evening!*');
     });
 
     it('renders each action as a card: bold title, description, one button accessory', () => {
@@ -212,17 +250,19 @@ describe('buildAppHomeView', () => {
       });
     });
 
-    it('shows a transient notice banner near the top when one is passed', () => {
-      const notice = 'Sent to your messages — open the Messages tab.';
+    it('shows a transient notice banner in the personalized area, below the brand header and above the tailored rows', () => {
+      const notice = 'Sent to your messages, open the Messages tab.';
       const view = buildAppHomeView(null, 'education', {
         firstName: 'A',
         now: new Date('2026-07-10T09:00:00'),
         notice,
       });
-      // Banner sits right under the greeting header, above the tagline.
-      const idx = view.blocks.findIndex((b) => b.type === 'section' && b.text?.text === notice);
-      assert.ok(idx >= 0, 'notice banner is present');
-      assert.ok(idx < view.blocks.findIndex((b) => b.type === 'section' && b.text?.text === TAGLINE));
+      const noticeIdx = view.blocks.findIndex((b) => b.type === 'section' && b.text?.text === notice);
+      const taglineIdx = view.blocks.findIndex((b) => b.type === 'section' && b.text?.text === TAGLINE);
+      const tailoredIdx = view.blocks.findIndex((b) => b.block_id === 'home_tailored_prompts');
+      assert.ok(noticeIdx >= 0, 'notice banner is present');
+      assert.ok(taglineIdx >= 0 && taglineIdx < noticeIdx, 'notice sits below the stable brand header');
+      assert.ok(noticeIdx < tailoredIdx, 'notice sits above the tailored prompt rows');
       assertNoEmoji(view);
     });
 

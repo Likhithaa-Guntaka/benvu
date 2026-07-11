@@ -11,8 +11,13 @@ import { buildPromptButtons } from './onboarding-builder.js';
  * @property {string} cta - Short button label for the card accessory (<= 75 chars).
  */
 
-/** One line describing what Benvu does (the Home purpose line). */
-export const TAGLINE = 'I help your team find funding, write reports, and hit every deadline, in any language.';
+/** One-line tagline under the Benvu name in the branded header. */
+export const TAGLINE = 'Find funding, write reports, and hit every deadline, in any language.';
+
+/** One-to-two line description of what Benvu is and who it's for (branded header). */
+export const DESCRIPTION =
+  "I'm Benvu, an AI teammate for nonprofit staff. Tell me what you need, in any language, and I'll " +
+  'find the grant, draft the report, or track the deadline.';
 
 /** Value carried by the "Change organization type" control. */
 export const CHANGE_ORG_VALUE = '__change_org_type__';
@@ -167,6 +172,17 @@ function orgTypeRows() {
 }
 
 /**
+ * The stable branded header: app name, tagline, and a short description, closed
+ * with a divider. Identical for every user and every org type — the personalized
+ * content sits below it. Emoji-free; the app avatar renders natively in Slack's
+ * Messages/DM header, so the body needs no logo image.
+ * @returns {import('@slack/types').KnownBlock[]}
+ */
+function brandHeaderBlocks() {
+  return [header('Benvu'), section(TAGLINE), section(DESCRIPTION), divider()];
+}
+
+/**
  * Build the App Home view.
  *
  * First open (no org type): name, purpose, a friendly setup prompt, and the
@@ -202,12 +218,19 @@ export function buildAppHomeView(_botUserId = null, orgType = null, opts = {}) {
   const now = opts.now instanceof Date ? opts.now : new Date();
 
   /** @type {import('@slack/types').KnownBlock[]} */
-  const blocks = [header(greeting(now, opts.firstName))];
-  // A transient confirmation banner, shown once at the top after a Home action.
+  // Stable branded header first (same for everyone), then the personalized body.
+  /** @type {import('@slack/types').KnownBlock[]} */
+  const blocks = [...brandHeaderBlocks()];
+
+  // Personalized greeting as a bold section — not a second header, so "Benvu"
+  // stays the largest element.
+  blocks.push(section(`*${greeting(now, opts.firstName)}*`));
+
+  // A transient confirmation banner, shown once after a Home action.
   if (notice) {
-    blocks.push(section(notice), divider());
+    blocks.push(section(notice));
   }
-  blocks.push(section(TAGLINE));
+
   // Optional live "closing soon" line — strictly additive, present only when the
   // count came back in time. Rendered as a plain context line, never a button.
   const closingSoon = opts.closingSoon;
