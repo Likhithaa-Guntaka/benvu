@@ -16,6 +16,13 @@ const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const FAIL_TTL_MS = 60 * 1000; // 1 minute
 /** Max time to wait on Grants.gov before giving up and omitting the line. */
 const DEFAULT_TIMEOUT_MS = 2500;
+/**
+ * How many open opportunities to pull in the single count call. 200 covers the
+ * full open set for every org default except the very broadest (health), so the
+ * count is exact there and a safe floor (only ever undercounts) beyond it. Even
+ * a 200-row response returns in a few hundred ms, well inside the timeout.
+ */
+const FETCH_ROWS = 200;
 const DAY_MS = 86_400_000;
 
 /** @type {Map<string, { count: number | null, expires: number }>} */
@@ -53,7 +60,12 @@ async function fetchClosingCount(codes, days, now, timeoutMs, fetchImpl) {
     const res = await fetchImpl(SEARCH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword: '', oppStatuses: 'posted', rows: 100, fundingCategories: codes.join('|') }),
+      body: JSON.stringify({
+        keyword: '',
+        oppStatuses: 'posted',
+        rows: FETCH_ROWS,
+        fundingCategories: codes.join('|'),
+      }),
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
