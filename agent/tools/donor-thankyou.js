@@ -36,8 +36,8 @@ export function createDraftDonorThankYouTool(onDraft) {
         `Thank you. Your gift${forCampaign} — one of ${donor_count} ${plural} who gave ${gift_range} — ` +
         'is already at work in our community. Gifts like yours are the reason we can show up for the people who ' +
         'count on us, day after day.\n\n' +
-        `It's easy to think a single contribution is a small thing. It isn't. Pooled with others, it becomes meals ` +
-        `served, doors opened, and lives steadied. You made that real.${noteLine}\n\n` +
+        `It's easy to think a single contribution is a small thing. It isn't. Pooled with others, it becomes performances ` +
+        `staged, exhibitions mounted, and artists paid for their work. You made that real.${noteLine}\n\n` +
         'With gratitude,\nThe team';
 
       if (onDraft) onDraft({ type: 'donor thank-you', content: message });

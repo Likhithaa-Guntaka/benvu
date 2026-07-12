@@ -21,13 +21,13 @@ function draftReport(impact) {
     'it made for the people and communities we serve.\n\n' +
     'The Need\n' +
     '--------\n' +
-    'The communities we serve continue to face real and pressing challenges. ' +
+    'Access to the arts is never guaranteed — for many in our community, it depends on organizations like ours. ' +
     `Our work to ${summary} responds directly to that need, focusing our time and ` +
     'resources where they can do the most good.\n\n' +
     'What We Did\n' +
     '-----------\n' +
-    `To ${summary}, our team delivered a focused program of activities throughout the period. ` +
-    'We coordinated staff, volunteers, and partners to reach the people who needed support most, ' +
+    `To ${summary}, our team delivered a focused program of performances, exhibitions, and creative activities throughout the period. ` +
+    'We coordinated artists, staff, volunteers, and partners to reach the widest possible audience, ' +
     'and adjusted our approach along the way based on what we learned.\n\n' +
     'Our Impact\n' +
     '----------\n' +

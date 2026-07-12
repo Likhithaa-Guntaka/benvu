@@ -38,7 +38,7 @@ export function buildSendToKalaModal(messageText) {
         type: 'input',
         block_id: 'action',
         label: plain('What should I do with it?'),
-        hint: plain('I will run it and send the result to your direct message with me.'),
+        hint: plain("I'll run it and send you the result in a DM."),
         element: { type: 'radio_buttons', action_id: 'choice', initial_option: CHOICES[0], options: CHOICES },
       },
     ],

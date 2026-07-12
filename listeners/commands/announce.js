@@ -11,7 +11,7 @@ export async function handleAnnounceCommand({ command, ack, respond, client, con
   if (!details) {
     await respond({
       response_type: 'ephemeral',
-      text: 'Usage: `/announce [event details]` — e.g. `/announce Food Distribution, Saturday Aug 16, 9am-noon, need 8 volunteers`',
+      text: 'Usage: `/announce [event details]` — e.g. `/announce Gallery opening, Saturday Aug 16, 5-8pm, need 6 volunteers`',
     });
     return;
   }

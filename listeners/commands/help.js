@@ -9,7 +9,7 @@ export const HELP_TEXT = [
   '• `/announce [details]` — Create a volunteer shift announcement',
   '• `/kala` — Show this help',
   '',
-  'You can also DM me or mention @kala in any channel — in any language.',
+  'You can also DM me or mention @Kala in any channel — in any language.',
 ].join('\n');
 
 /**

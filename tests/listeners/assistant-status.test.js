@@ -11,7 +11,7 @@ describe('statusForMessage', () => {
     ['write up our impact', 'Drafting...'],
     ['remind me about the deadline', 'Setting reminder...'],
     ['summarize these meeting notes', 'Summarizing notes...'],
-    ['write a thank you for our donors', 'Drafting thank you...'],
+    ['write a thank you for our donors', 'Drafting thank-you...'],
     ['create a volunteer announcement', 'Creating announcement...'],
     ['hello there', 'Thinking...'],
     ['', 'Thinking...'],

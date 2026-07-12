@@ -155,7 +155,7 @@ function heroBlock(closingSoon) {
     text = `*${countWord} ${closingSoon.label} ${grants} ${closes} in the next 30 days* — worth a look before they close.`;
     cta = "See what's closing";
   } else {
-    text = "*Nothing's on fire right now,* good moment to go find the next grant worth chasing.";
+    text = "*Nothing's on fire right now* — good moment to go find the next grant worth chasing.";
     cta = 'Find grants';
   }
   const accessory = button({ text: cta, actionId: 'category_find_grants', value: 'Find Grants', style: 'primary' });

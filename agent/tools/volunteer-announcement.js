@@ -14,7 +14,7 @@ export function createVolunteerAnnouncementTool(onDraft) {
       'Use this when a user wants to post a call for volunteers. Extract the event name, date, ' +
       'time, and number of volunteers needed, plus location, skills, or a contact person if mentioned.',
     {
-      event_name: z.string().describe('The name of the event or shift, e.g. "Saturday Food Distribution".'),
+      event_name: z.string().describe('The name of the event or shift, e.g. "Saturday Gallery Opening".'),
       date: z.string().describe('The date, e.g. "Saturday, August 16".'),
       time: z.string().describe('The time or time window, e.g. "9:00 AM – 12:00 PM".'),
       volunteers_needed: z.number().describe('How many volunteers are needed, e.g. 8.'),

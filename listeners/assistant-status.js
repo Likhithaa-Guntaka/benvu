@@ -10,7 +10,7 @@ export function statusForMessage(text) {
   if (t.includes('draft') || t.includes('report') || t.includes('impact')) return 'Drafting...';
   if (t.includes('remind') || t.includes('deadline')) return 'Setting reminder...';
   if (t.includes('summarize') || t.includes('meeting') || t.includes('notes')) return 'Summarizing notes...';
-  if (t.includes('thank') || t.includes('donor')) return 'Drafting thank you...';
+  if (t.includes('thank') || t.includes('donor')) return 'Drafting thank-you...';
   if (t.includes('volunteer') || t.includes('announcement')) return 'Creating announcement...';
   return 'Thinking...';
 }
