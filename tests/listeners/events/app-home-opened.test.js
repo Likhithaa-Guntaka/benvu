@@ -67,7 +67,7 @@ describe('handleAppHomeOpened', () => {
       assert.strictEqual(fakeLogger.error.mock.callCount(), 0);
       const view = fakeClient.views.publish.mock.calls[0].arguments[0].view;
       const greeting = view.blocks.find(
-        (b) => b.type === 'section' && /^\*Good (morning|afternoon|evening)!\*$/.test(b.text?.text || ''),
+        (b) => b.type === 'section' && /^\*(Morning|Afternoon|Evening)\. .*five minutes\.\*$/.test(b.text?.text || ''),
       );
       assert.ok(greeting, 'neutral greeting section present');
     } finally {

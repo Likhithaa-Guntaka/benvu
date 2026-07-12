@@ -17,11 +17,12 @@ describe('publishHome', () => {
     assert.strictEqual(client.views.publish.mock.callCount(), 1);
     const view = client.views.publish.mock.calls[0].arguments[0].view;
     assert.strictEqual(view.type, 'home');
-    const footer = view.blocks
-      .filter((b) => b.type === 'context')
-      .flatMap((b) => b.elements.map((e) => e.text))
-      .find((t) => /Tailored for/.test(t));
-    assert.match(footer, /Arts & Culture/);
+    // The redesigned Home ends after the grouped rows — no footer context block.
+    assert.strictEqual(view.blocks[view.blocks.length - 1].type, 'divider');
+    assert.ok(
+      view.blocks.some((b) => b.block_id === 'quick_actions_1'),
+      'hero call sheet present',
+    );
   });
 
   it('lets the newest call win: a slower older call is superseded and does not publish', async () => {
